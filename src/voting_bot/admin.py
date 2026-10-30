@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import csv
 import io
 import logging
 
@@ -11,6 +10,9 @@ from aiogram import Bot, F, Router
 from aiogram.enums import ChatType
 from aiogram.filters import Command, CommandObject, Filter
 from aiogram.types import BufferedInputFile, CallbackQuery, Message
+from openpyxl import Workbook
+from openpyxl.cell.cell import ILLEGAL_CHARACTERS_RE
+from openpyxl.utils import get_column_letter
 
 from . import texts
 from .config import Settings, now_utc
@@ -53,31 +55,59 @@ async def stats(message: Message, db: Storage, settings: Settings) -> None:
     await message.answer(texts.stats(e, e.phase(now), db.stats(), now))
 
 
-def voters_csv(db: Storage, settings: Settings) -> bytes:
+VOTERS_HEADER = [
+    ("id", 13),
+    ("username", 22),
+    ("имя в Telegram", 30),
+    ("время регистрации", 20),
+    ("проголосовал", 14),
+    ("аннулирован", 13),
+    ("заблокировал бота", 19),
+]
+
+
+def _text(value: str) -> str:
+    return ILLEGAL_CHARACTERS_RE.sub("", value)
+
+
+def voters_xlsx(db: Storage, settings: Settings) -> bytes:
     """who registered and whether they voted; the choice is never exported"""
     tz = settings.election.tz
-    buf = io.StringIO()
-    w = csv.writer(buf)
-    w.writerow(["user_id", "username", "telegram_name", "registered_at", "voted", "annulled", "blocked_bot"])
+    wb = Workbook()
+    ws = wb.active
+    assert ws is not None
+    ws.title = "участники"
+    ws.append([name for name, _ in VOTERS_HEADER])
     for row in db.voters():
         u = row.user
-        w.writerow([
+        ws.append([
             u.user_id,
-            f"@{u.username}" if u.username else "",
-            u.tg_name or "",
-            u.started_at.astimezone(tz).strftime("%Y-%m-%d %H:%M:%S"),
+            _text(f"@{u.username}") if u.username else "",
+            _text(u.tg_name or ""),
+            u.started_at.astimezone(tz).replace(tzinfo=None),
             "да" if row.voted else "нет",
             "да" if u.banned else "нет",
             "да" if u.blocked else "нет",
         ])
-    # utf-8 with BOM so Excel opens the Cyrillic text correctly
-    return buf.getvalue().encode("utf-8-sig")
+    for cells in ws.iter_rows():
+        for cell in cells:
+            # usernames and telegram names are typed by users: a leading "=", "@", "+" or "-"
+            # must stay plain text and never become a formula
+            if isinstance(cell.value, str):
+                cell.data_type = "s"
+        cells[3].number_format = "yyyy-mm-dd hh:mm:ss"
+    for i, (_, width) in enumerate(VOTERS_HEADER, 1):
+        ws.column_dimensions[get_column_letter(i)].width = width
+    ws.freeze_panes = "A2"
+    buf = io.BytesIO()
+    wb.save(buf)
+    return buf.getvalue()
 
 
 @router.message(Command("voters"), IsAdmin())
 async def voters(message: Message, db: Storage, settings: Settings) -> None:
     stamp = now_utc().astimezone(settings.election.tz).strftime("%Y%m%d_%H%M")
-    await message.answer_document(BufferedInputFile(voters_csv(db, settings), filename=f"voters_{stamp}.csv"))
+    await message.answer_document(BufferedInputFile(voters_xlsx(db, settings), filename=f"voters_{stamp}.xlsx"))
 
 
 @router.message(Command("annul"), IsAdmin())

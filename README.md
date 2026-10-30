@@ -22,7 +22,7 @@ Admins are listed by numeric Telegram id in `ADMIN_IDS`. Anyone else who sends t
 |---|---|
 | `/results` | Votes per candidate with percentages. Before the end it shows numbers only if `admin_live_results = true`. |
 | `/stats` | Registered users, votes, turnout, votes per hour. |
-| `/voters` | CSV file: user id, username, name, registration time, voted yes/no, annulled, blocked the bot. |
+| `/voters` | Excel file (.xlsx): user id, username, Telegram name, registration time, voted yes/no, annulled, blocked the bot. Every text cell is stored as text, so a name that starts with "=" or "@" never runs as a formula. |
 | `/annul <id>` | Removes the vote of that user and bars them from voting again. |
 | `/broadcast <text>` | Sends a text to every registered user, after a confirm button. |
 | `/admin` | Lists these commands. |

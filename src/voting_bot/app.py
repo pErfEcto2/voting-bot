@@ -25,7 +25,7 @@ USER_COMMANDS = [
 ADMIN_COMMANDS = USER_COMMANDS + [
     BotCommand(command="results", description="Итоги голосования"),
     BotCommand(command="stats", description="Статистика"),
-    BotCommand(command="voters", description="Список участников (CSV)"),
+    BotCommand(command="voters", description="Список участников (Excel)"),
     BotCommand(command="annul", description="Аннулировать голос: /annul <id>"),
     BotCommand(command="broadcast", description="Сообщение всем: /broadcast <текст>"),
     BotCommand(command="admin", description="Команды администратора"),
