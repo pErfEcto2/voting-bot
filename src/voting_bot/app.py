@@ -32,7 +32,7 @@ ADMIN_COMMANDS = USER_COMMANDS + [
 ]
 
 
-async def setup_commands(bot: Bot, settings: Settings) -> None:
+async def setup_commands(bot: Bot, db: Storage, settings: Settings) -> None:
     await bot.set_my_commands(USER_COMMANDS, scope=BotCommandScopeDefault())
     for admin_id in settings.admin_ids:
         try:
@@ -40,6 +40,21 @@ async def setup_commands(bot: Bot, settings: Settings) -> None:
         except TelegramBadRequest as err:
             # the admin has not opened the bot yet
             log.warning("admin menu for %s not set: %s", admin_id, err.message)
+
+    # a user removed from ADMIN_IDS keeps the admin menu until it is deleted;
+    # with no record of earlier admins, every registered non-admin is cleared once
+    saved = db.kv_get("menu_admins")
+    if saved is None:
+        previous = {u.user_id for u in db.recipients(not_voted_only=False)}
+    else:
+        previous = {int(x) for x in saved.split(",") if x}
+    for user_id in sorted(previous - settings.admin_ids):
+        try:
+            await bot.delete_my_commands(scope=BotCommandScopeChat(chat_id=user_id))
+            log.info("admin menu removed for %s", user_id)
+        except TelegramBadRequest as err:
+            log.warning("admin menu for %s not removed: %s", user_id, err.message)
+    db.kv_set("menu_admins", ",".join(str(i) for i in sorted(settings.admin_ids)))
 
 
 async def run(settings: Settings) -> None:
@@ -55,7 +70,7 @@ async def run(settings: Settings) -> None:
         "bot @%s, election %r, %s .. %s, %d candidates, %d admins",
         me.username, e.title, e.start.isoformat(), e.end.isoformat(), len(e.candidates), len(settings.admin_ids),
     )
-    await setup_commands(bot, settings)
+    await setup_commands(bot, db, settings)
     notices = asyncio.create_task(run_notices(bot, db, settings))
     try:
         await dp.start_polling(bot, allowed_updates=dp.resolve_used_update_types())

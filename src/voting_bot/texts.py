@@ -9,6 +9,8 @@ from .config import Election, Phase
 from .db import Stats, User
 
 WEEKDAYS = ["понедельник", "вторник", "среда", "четверг", "пятница", "суббота", "воскресенье"]
+# genitive, after "с" and "до"
+WEEKDAYS_GEN = ["понедельника", "вторника", "среды", "четверга", "пятницы", "субботы", "воскресенья"]
 MONTHS = [
     "января", "февраля", "марта", "апреля", "мая", "июня",
     "июля", "августа", "сентября", "октября", "ноября", "декабря",
@@ -19,9 +21,10 @@ def tz_label(e: Election) -> str:
     return "по московскому времени" if e.tz.key == "Europe/Moscow" else f"({e.tz.key})"
 
 
-def fmt_day(e: Election, dt: datetime) -> str:
+def fmt_day(e: Election, dt: datetime, genitive: bool = False) -> str:
     local = dt.astimezone(e.tz)
-    return f"{WEEKDAYS[local.weekday()]}, {local.day} {MONTHS[local.month - 1]}"
+    weekday = (WEEKDAYS_GEN if genitive else WEEKDAYS)[local.weekday()]
+    return f"{weekday}, {local.day} {MONTHS[local.month - 1]}"
 
 
 def fmt_time(e: Election, dt: datetime) -> str:
@@ -33,7 +36,17 @@ def fmt_window(e: Election) -> str:
     start, end = e.start.astimezone(e.tz), e.end.astimezone(e.tz)
     if start.date() == end.date():
         return f"в {fmt_day(e, start)}, с {fmt_time(e, start)} до {fmt_time(e, end)} {tz_label(e)}"
-    return f"с {fmt_day(e, start)}, {fmt_time(e, start)} до {fmt_day(e, end)}, {fmt_time(e, end)} {tz_label(e)}"
+    return (
+        f"с {fmt_day(e, start, genitive=True)}, {fmt_time(e, start)} "
+        f"до {fmt_day(e, end, genitive=True)}, {fmt_time(e, end)} {tz_label(e)}"
+    )
+
+
+def fmt_until(e: Election) -> str:
+    """what follows 'до': only the time for a one-day window, day and time otherwise"""
+    if e.start.astimezone(e.tz).date() == e.end.astimezone(e.tz).date():
+        return f"{fmt_time(e, e.end)} {tz_label(e)}"
+    return f"{fmt_day(e, e.end, genitive=True)}, {fmt_time(e, e.end)} {tz_label(e)}"
 
 
 def fmt_stamp(e: Election, dt: datetime) -> str:
@@ -94,7 +107,7 @@ def not_started(e: Election) -> str:
 
 
 def ballot(e: Election) -> str:
-    return f"Голосование открыто до {fmt_time(e, e.end)} {tz_label(e)}.\nВыберите кандидата:"
+    return f"Голосование открыто до {fmt_until(e)}.\nВыберите кандидата:"
 
 
 def confirm(name: str) -> str:
@@ -102,14 +115,14 @@ def confirm(name: str) -> str:
 
 
 def opened_notice(e: Election) -> str:
-    return f"Голосование открыто! Оно идёт до {fmt_time(e, e.end)} {tz_label(e)}.\nВыберите кандидата:"
+    return f"Голосование открыто! Оно идёт до {fmt_until(e)}.\nВыберите кандидата:"
 
 
 def reminder_notice(e: Election, now: datetime) -> str:
     minutes = max(1, round((e.end - now).total_seconds() / 60))
     left = f"{minutes // 60} ч {minutes % 60:02d} мин" if minutes >= 60 else f"{minutes} мин"
     return (
-        f"До конца голосования осталось {left} (до {fmt_time(e, e.end)} {tz_label(e)}).\n"
+        f"До конца голосования осталось {left} (до {fmt_until(e)}).\n"
         "Вы ещё не проголосовали. Выберите кандидата:"
     )
 
@@ -134,14 +147,14 @@ BROADCAST_EXPIRED = "Нет рассылки для отправки. Отпра
 def phase_line(e: Election, phase: Phase) -> str:
     return {
         Phase.BEFORE: f"Голосование ещё не началось, оно пройдёт {fmt_window(e)}.",
-        Phase.OPEN: f"Голосование идёт, до конца {fmt_time(e, e.end)}.",
+        Phase.OPEN: f"Голосование идёт до {fmt_until(e)}.",
         Phase.CLOSED: "Голосование завершено.",
     }[phase]
 
 
 def results(e: Election, phase: Phase, tally: dict[str, int], annulled: int, now: datetime) -> str:
     if phase is not Phase.CLOSED and not e.admin_live_results:
-        return f"Результаты будут доступны после окончания голосования ({fmt_time(e, e.end)} {tz_label(e)})."
+        return f"Результаты будут доступны, когда голосование закончится (оно идёт до {fmt_until(e)})."
     total = sum(tally.values())
     if phase is Phase.CLOSED:
         head = "Итоги голосования (окончательные):"
