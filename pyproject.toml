@@ -1,0 +1,22 @@
+[project]
+name = "voting-bot"
+version = "0.1.0"
+description = "Telegram bot for a small election with a fixed voting window"
+readme = "README.md"
+authors = [
+    { name = "pErfEcto2", email = "misha.yaro2004@gmail.com" }
+]
+requires-python = ">=3.12"
+dependencies = [
+    "aiogram>=3.31.0",
+]
+
+[project.scripts]
+voting-bot = "voting_bot:main"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[dependency-groups]
+dev = []

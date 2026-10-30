@@ -1,0 +1,23 @@
+[Unit]
+Description=Voting Telegram bot
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=votebot
+Group=votebot
+WorkingDirectory=/opt/voting-bot
+EnvironmentFile=/opt/voting-bot/.env
+ExecStart=/opt/voting-bot/.venv/bin/voting-bot run
+Restart=always
+RestartSec=5
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ReadWritePaths=/opt/voting-bot/data
+
+[Install]
+WantedBy=multi-user.target

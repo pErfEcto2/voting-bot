@@ -1,0 +1,15 @@
+__pycache__/
+*.py[cod]
+.venv/
+.pytest_cache/
+dist/
+build/
+
+# deployment data: secrets, real election, candidate files, database
+.env
+bot_token
+election.toml
+programs/
+data/
+*.db
+*.db-*

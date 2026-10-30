@@ -1,0 +1,32 @@
+# copy to election.toml and edit; election.toml and programs/ are git-ignored
+
+# shown in the greeting: "Это бот для голосования: <title>."
+title = "выборы председателя студенческого совета"
+
+# times need an explicit UTC offset; voting is open for start <= now < end.
+# registration (any message to the bot) is open from launch until end
+timezone = "Europe/Moscow"
+start = 2026-11-02T10:00:00+03:00
+end = 2026-11-02T18:00:00+03:00
+# optional: one reminder to those who have not voted yet
+reminder = 2026-11-02T17:00:00+03:00
+
+# admins see /results while voting is open; set false to show results only after end
+admin_live_results = true
+
+# link in the greeting
+source_url = "https://github.com/pErfEcto2/voting-bot"
+
+# order here is the order of the buttons. id: latin, at most 32 bytes, no ':'.
+# program: optional PDF, path relative to this file
+[[candidates]]
+id = "ivanova"
+name = "Иванова Анна"
+about = "группа АБВ24-1"
+program = "programs/ivanova.pdf"
+
+[[candidates]]
+id = "petrov"
+name = "Петров Пётр"
+about = "группа АБВ23-2"
+program = "programs/petrov.pdf"
